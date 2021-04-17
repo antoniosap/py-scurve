@@ -1,4 +1,4 @@
-# PyScurve
+# PyScurve + personal update
 
 Small library for planning scurve velocity profiles. The crucial part of implementaion is based on "Trajectory Planning for Automatic Machines and Robots-Springer (2008)" by Luigi Biagiotti, Claudio Melchiorri.
 

@@ -16,6 +16,6 @@ class TrajectoryPlanner(object):
 
         for arg in args:
             if sh != len(arg):
-                raise ValueError("All parameters must have the same dimention")
+                raise ValueError("All parameters must have the same dimension")
 
         return (sh,)

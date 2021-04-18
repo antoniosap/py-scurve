@@ -22,6 +22,7 @@ class SCurve1AxisMotion(ScurvePlanner):
         self._j_max = 100.
         self._dt = dt
         self._profile = None
+        self._store = {}
 
     @property
     def q0(self):
@@ -87,6 +88,16 @@ class SCurve1AxisMotion(ScurvePlanner):
     def dt(self, value):
         self._dt = value
 
+    def recall(self, label):
+        return self._store[label]
+
+    def store(self, label):
+        self._store[label] = self._profile
+
+    @property
+    def profile(self):
+        return self._profile
+
     def do_plan_trajectory(self, q0, q1):
         if q0 is not None:
             self.q0 = q0
@@ -116,20 +127,20 @@ class SCurve1AxisMotion(ScurvePlanner):
         # print(self._timesteps)
         # print(time)
         # print(max(traj.time))
-        self._profile = r_profiles[0][self.POSITION_ID]
+        self._profile = np.round(r_profiles[0][self.POSITION_ID]).astype(np.int16)
 
-    def do_reverse_trajectory(self):
+    def reverse_trajectory(self):
         self._profile = self._profile[::-1]
 
-    async def do_exec_trajectory(self):
+    async def syn_exec_trajectory(self):
         await asyncio.create_task(self._exec_t())
 
     async def _exec_t(self):
         for t in range(0, len(self._profile)):
-            print(self._axis_name, round(self._profile[t]))
+            print(self._axis_name, self._profile[t])
             await asyncio.sleep(self._dt)
 
-    async def a_exec_trajectory(self):
+    async def asy_exec_trajectory(self):
         await self._exec_t()
 
 
@@ -138,28 +149,38 @@ class SCurve2AxisMotion:
         self._axis1 = SCurve1AxisMotion(axis1_name)
         self._axis2 = SCurve1AxisMotion(axis2_name)
 
+    def recall(self, label):
+        return self._axis1.recall(label), self._axis2.recall(label)
+
+    def store(self, label):
+        self._axis1.store(label)
+        self._axis2.store(label)
+
     def do_plan_trajectory(self, a_q0, a_q1, b_q0, b_q1):
         self._axis1.do_plan_trajectory(a_q0, a_q1)
         self._axis2.do_plan_trajectory(b_q0, b_q1)
 
-    async def do_exec_trajectory(self):
-        await asyncio.gather(self._axis1.a_exec_trajectory(),
-                             self._axis2.a_exec_trajectory())
+    async def asy_exec_trajectory(self):
+        await asyncio.gather(self._axis1.asy_exec_trajectory(),
+                             self._axis2.asy_exec_trajectory())
 
 
 if __name__ == "__main__":
     # cam_pan_range = (32, 120)
     # cam_tilt_range = (70, 185)
     # sequential
-    print("sequential exec")
+    print("sequential exec test")
     axis_pan = SCurve1AxisMotion('pan')
     axis_pan.do_plan_trajectory(32, 120)
-    asyncio.run(axis_pan.do_exec_trajectory())
+    asyncio.run(axis_pan.syn_exec_trajectory())
     axis_tilt = SCurve1AxisMotion('tilt')
     axis_tilt.do_plan_trajectory(70, 185)
-    asyncio.run(axis_tilt.do_exec_trajectory())
+    asyncio.run(axis_tilt.syn_exec_trajectory())
     # parallel
-    print("parallel exec")
+    print("parallel exec test")
     two_axis = SCurve2AxisMotion('pan', 'tilt')
     two_axis.do_plan_trajectory(a_q0=32, a_q1=120, b_q0=70, b_q1=185)
-    asyncio.run(two_axis.do_exec_trajectory())
+    asyncio.run(two_axis.asy_exec_trajectory())
+    # test profile storage
+    two_axis.store('test')
+    print(two_axis.recall('test'))
